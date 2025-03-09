@@ -81,7 +81,26 @@ if uploaded_file is not None:
 
         # Display upgrade candidates
         st.header("🎯 Upgrade Potential Analysis")
-        
+
+        # Add scoring criteria explanation
+        with st.expander("ℹ️ How are upgrade scores calculated?"):
+            st.markdown("""
+            The upgrade score (0-100) is based on three factors:
+
+            1. **Donation Consistency (40%)**: How stable are their donation amounts
+                - More consistent donations = higher score
+
+            2. **Duration of Support (30%)**: How long they've been donating
+                - Score increases up to 12 months of giving
+
+            3. **Donation Frequency (30%)**: How regularly they donate
+                - Score increases up to 12 donations
+
+            **Recommended Ask Amounts:**
+            - Scores 80+: 50% increase suggested
+            - Scores below 80: 25% increase suggested
+            """)
+
         # Filter controls
         col1, col2 = st.columns(2)
         with col1:
@@ -89,14 +108,16 @@ if uploaded_file is not None:
                 "Minimum Upgrade Score",
                 min_value=0,
                 max_value=100,
-                value=70
+                value=70,
+                help="Filter donors by their upgrade potential score"
             )
-        
+
         with col2:
             min_donations = st.number_input(
                 "Minimum Donation Amount ($)",
                 min_value=0,
-                value=50
+                value=50,
+                help="Filter donors by their current donation amount"
             )
 
         # Filter and display upgrade candidates
