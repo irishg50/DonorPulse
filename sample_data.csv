@@ -1,0 +1,16 @@
+donor_id,donation_amount,donation_date,email
+1001,25.00,2024-01-01,donor1@example.com
+1001,25.00,2024-02-01,donor1@example.com
+1001,25.00,2024-03-01,donor1@example.com
+1002,50.00,2024-01-01,donor2@example.com
+1002,50.00,2024-02-01,donor2@example.com
+1002,50.00,2024-03-01,donor2@example.com
+1003,100.00,2024-01-01,donor3@example.com
+1003,100.00,2024-02-01,donor3@example.com
+1003,100.00,2024-03-01,donor3@example.com
+1004,75.00,2024-01-01,donor4@example.com
+1004,75.00,2024-02-01,donor4@example.com
+1004,85.00,2024-03-01,donor4@example.com
+1005,30.00,2024-01-01,donor5@example.com
+1005,30.00,2024-02-01,donor5@example.com
+1005,30.00,2024-03-01,donor5@example.com
