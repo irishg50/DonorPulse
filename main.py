@@ -30,33 +30,33 @@ if uploaded_file is not None:
     try:
         # Load and validate data
         df = load_and_validate_data(uploaded_file)
-        
+
         # Analysis section
         st.header("📊 Donor Analysis Dashboard")
-        
+
         # Key metrics in columns
         col1, col2, col3, col4 = st.columns(4)
-        
+
         with col1:
             st.metric(
                 "Total Donors",
                 len(df['donor_id'].unique())
             )
-        
+
         with col2:
             avg_donation = df['donation_amount'].mean()
             st.metric(
                 "Average Monthly Donation",
                 format_currency(avg_donation)
             )
-        
+
         with col3:
             total_monthly = df['donation_amount'].sum()
             st.metric(
                 "Total Monthly Donations",
                 format_currency(total_monthly)
             )
-        
+
         with col4:
             median_donation = df['donation_amount'].median()
             st.metric(
@@ -77,7 +77,7 @@ if uploaded_file is not None:
 
         # Analyze donors and get upgrade potential
         donor_analysis = analyze_donors(df)
-        upgrade_potential = calculate_upgrade_potential(donor_analysis)
+        upgrade_potential = calculate_upgrade_potential(donor_analysis, df)
 
         # Display upgrade candidates
         st.header("🎯 Upgrade Potential Analysis")
@@ -99,6 +99,12 @@ if uploaded_file is not None:
             **Recommended Ask Amounts:**
             - Scores 80+: 50% increase suggested
             - Scores below 80: 25% increase suggested
+
+            **Machine Learning Enhancement:**
+            When 12+ months of data is available, our ML model provides additional insights by:
+            - Analyzing historical donation patterns
+            - Predicting upgrade probability
+            - Adjusting recommendations based on learned patterns
             """)
 
         # Filter controls
@@ -120,26 +126,42 @@ if uploaded_file is not None:
                 help="Filter donors by their current donation amount"
             )
 
+        # Check if ML predictions are available
+        has_ml_predictions = 'ml_adjusted_score' in upgrade_potential.columns
+
         # Filter and display upgrade candidates
+        if has_ml_predictions:
+            st.info("🤖 Machine learning predictions are enabled based on your historical data!")
+            score_col = 'ml_adjusted_score'
+        else:
+            score_col = 'upgrade_score'
+
         upgrade_candidates = upgrade_potential[
-            (upgrade_potential['upgrade_score'] >= min_score) &
+            (upgrade_potential[score_col] >= min_score) &
             (upgrade_potential['current_donation'] >= min_donations)
-        ].sort_values('upgrade_score', ascending=False)
+        ].sort_values(score_col, ascending=False)
 
         st.subheader("🌟 Recommended Upgrade Candidates")
         if not upgrade_candidates.empty:
+            display_columns = [
+                'donor_id',
+                'current_donation',
+                'donation_consistency',
+                'months_active',
+                score_col,
+                'recommended_ask'
+            ]
+
+            if has_ml_predictions:
+                display_columns.insert(-1, 'upgrade_probability')
+
             st.dataframe(
-                upgrade_candidates[[
-                    'donor_id',
-                    'current_donation',
-                    'donation_consistency',
-                    'months_active',
-                    'upgrade_score',
-                    'recommended_ask'
-                ]].style.format({
+                upgrade_candidates[display_columns].style.format({
                     'current_donation': '${:.2f}',
                     'donation_consistency': '{:.1%}',
                     'upgrade_score': '{:.0f}',
+                    'ml_adjusted_score': '{:.0f}',
+                    'upgrade_probability': '{:.1%}',
                     'recommended_ask': '${:.2f}'
                 })
             )

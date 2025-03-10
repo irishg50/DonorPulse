@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from predictive_model import DonorUpgradePrediction
 
 def analyze_donors(df):
     """
@@ -32,13 +33,13 @@ def analyze_donors(df):
     donor_analysis['donation_consistency'] = 1 - (
         donor_analysis['std_donation'] / donor_analysis['avg_donation']
     ).fillna(0)
-    
+
     # Clip consistency to 0-1 range
     donor_analysis['donation_consistency'] = donor_analysis['donation_consistency'].clip(0, 1)
 
     return donor_analysis
 
-def calculate_upgrade_potential(donor_analysis):
+def calculate_upgrade_potential(donor_analysis, df=None):
     """
     Calculate upgrade potential scores and recommendations
     """
@@ -62,6 +63,30 @@ def calculate_upgrade_potential(donor_analysis):
         donor_analysis['avg_donation'] * 1.5,  # 50% increase for high-score donors
         donor_analysis['avg_donation'] * 1.25   # 25% increase for others
     )
+
+    # If historical data is provided, add ML predictions
+    if df is not None and len(df) >= 12:  # Only predict if we have enough historical data
+        predictor = DonorUpgradePrediction()
+        features = predictor.prepare_features(df)
+
+        # For demo purposes, we'll create synthetic labels
+        # In production, this would come from actual upgrade history
+        synthetic_labels = (upgrade_potential['upgrade_score'] >= 80).astype(int)
+
+        # Train model and get predictions
+        metrics = predictor.train(features, synthetic_labels)
+        predictions = predictor.predict(features)
+
+        # Add predictions to results
+        upgrade_potential = upgrade_potential.merge(
+            predictions, on='donor_id', how='left'
+        )
+
+        # Adjust scores based on ML predictions
+        upgrade_potential['ml_adjusted_score'] = (
+            upgrade_potential['upgrade_score'] * 0.7 +
+            upgrade_potential['upgrade_probability'] * 30  # Scale to match 0-100
+        )
 
     # Round scores and amounts
     upgrade_potential['upgrade_score'] = upgrade_potential['upgrade_score'].round(1)
