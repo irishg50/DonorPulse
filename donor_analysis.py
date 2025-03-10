@@ -93,9 +93,12 @@ def calculate_upgrade_potential(donor_analysis, df=None):
             upgrade_potential.loc[high_probability_mask, 'recommended_ask'] = \
                 upgrade_potential.loc[high_probability_mask, 'current_donation'] * 1.75  # 75% increase for high probability
 
+            return upgrade_potential, predictor
+
         except Exception as e:
             print(f"Error in ML prediction: {str(e)}")
             # If ML fails, continue with base scoring
+            return upgrade_potential, None
 
     # Round scores and amounts
     upgrade_potential['upgrade_score'] = upgrade_potential['upgrade_score'].round(1)
@@ -103,4 +106,4 @@ def calculate_upgrade_potential(donor_analysis, df=None):
     if 'ml_adjusted_score' in upgrade_potential.columns:
         upgrade_potential['ml_adjusted_score'] = upgrade_potential['ml_adjusted_score'].round(1)
 
-    return upgrade_potential
+    return upgrade_potential, None
