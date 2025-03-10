@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from donor_analysis import analyze_donors, calculate_upgrade_potential
 from utils import load_and_validate_data, format_currency
+from predictive_model import DonorUpgradePrediction
 
 # Page configuration
 st.set_page_config(
@@ -23,7 +24,7 @@ Upload your donor data to get started!
 uploaded_file = st.file_uploader(
     "Upload your donor data (CSV)",
     type="csv",
-    help="CSV should contain columns: donor_id, donation_amount, donation_date, email"
+    help="CSV should contain columns: donor_id, donation_amount, donation_date"
 )
 
 if uploaded_file is not None:
@@ -77,7 +78,49 @@ if uploaded_file is not None:
 
         # Analyze donors and get upgrade potential
         donor_analysis = analyze_donors(df)
+        predictor = DonorUpgradePrediction()
+        features = predictor.prepare_features(df)
         upgrade_potential = calculate_upgrade_potential(donor_analysis, df)
+
+        # ML Model Insights
+        st.header("🤖 Machine Learning Insights")
+
+        # Add ML model explanation
+        with st.expander("ℹ️ How does the ML model work?"):
+            st.markdown("""
+            Our machine learning model analyzes historical donation patterns to predict upgrade potential:
+
+            1. **Historical Pattern Analysis**
+                - Tracks donation growth over time
+                - Identifies seasonal patterns
+                - Measures consistency and commitment
+
+            2. **Feature Engineering**
+                - Calculates rolling averages
+                - Measures donation stability
+                - Tracks growth rates
+                - Evaluates donor engagement length
+
+            3. **Prediction Process**
+                - Learns from past successful upgrades
+                - Weighs multiple factors
+                - Provides probability scores
+                - Adjusts recommendations
+            """)
+
+        # Get and display model insights
+        insights = predictor.get_model_insights(features)
+        if insights:
+            st.subheader("📊 Feature Importance Analysis")
+            st.plotly_chart(insights['feature_importance'], use_container_width=True)
+
+            st.subheader("🔑 Key Findings")
+            st.markdown(f"""
+            Top 3 most influential factors in predicting upgrades:
+            1. {insights['top_features'][-1]}
+            2. {insights['top_features'][-2]}
+            3. {insights['top_features'][-3]}
+            """)
 
         # Display upgrade candidates
         st.header("🎯 Upgrade Potential Analysis")

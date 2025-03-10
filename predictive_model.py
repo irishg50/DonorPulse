@@ -4,6 +4,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score, roc_auc_score
+import plotly.express as px
+import plotly.graph_objects as go
 
 class DonorUpgradePrediction:
     def __init__(self):
@@ -13,6 +15,8 @@ class DonorUpgradePrediction:
             class_weight='balanced'
         )
         self.scaler = StandardScaler()
+        self.feature_names = None
+        self.feature_importance = None
 
     def prepare_features(self, donor_data):
         """
@@ -57,6 +61,52 @@ class DonorUpgradePrediction:
 
         return features
 
+    def get_model_insights(self, features):
+        """
+        Generate visualizations and insights about the model
+        """
+        if self.feature_importance is None:
+            return None
+
+        # Create feature importance plot
+        importance_df = pd.DataFrame({
+            'feature': self.feature_names,
+            'importance': self.feature_importance
+        }).sort_values('importance', ascending=True)
+
+        fig = go.Figure(go.Bar(
+            x=importance_df['importance'],
+            y=importance_df['feature'],
+            orientation='h'
+        ))
+
+        fig.update_layout(
+            title="Feature Importance in Predicting Donor Upgrades",
+            xaxis_title="Importance Score",
+            yaxis_title="Feature",
+            height=400
+        )
+
+        # Generate text insights
+        insights = {
+            'top_features': importance_df.iloc[-3:]['feature'].tolist(),
+            'feature_importance': fig,
+            'model_description': """
+            The model analyzes several aspects of donor behavior:
+            - Historical donation patterns and growth rates
+            - Consistency in giving amounts
+            - Length of donor relationship
+            - Recent changes in donation behavior
+
+            Key findings from your donor data:
+            1. Most influential factors in predicting upgrades
+            2. Patterns in successful donor upgrades
+            3. Optimal timing for upgrade requests
+            """
+        }
+
+        return insights
+
     def train(self, features, donor_data):
         """
         Train the prediction model using actual historical upgrade patterns
@@ -83,6 +133,7 @@ class DonorUpgradePrediction:
 
             # Prepare features for training
             training_features = features.drop(['donor_id', 'has_increased'], axis=1)
+            self.feature_names = training_features.columns.tolist()
             X = self.scaler.fit_transform(training_features)
 
             # Split and train
@@ -91,6 +142,9 @@ class DonorUpgradePrediction:
             )
 
             self.model.fit(X_train, y_train)
+
+            # Store feature importance
+            self.feature_importance = self.model.feature_importances_
 
             # Calculate metrics
             y_pred = self.model.predict(X_test)
