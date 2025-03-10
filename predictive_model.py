@@ -10,7 +10,7 @@ class DonorUpgradePrediction:
         self.model = RandomForestClassifier(
             n_estimators=100,
             random_state=42,
-            class_weight='balanced'  # Handle imbalanced classes
+            class_weight='balanced'
         )
         self.scaler = StandardScaler()
 
@@ -20,46 +20,72 @@ class DonorUpgradePrediction:
         """
         features = pd.DataFrame()
 
-        # Group by donor
-        donor_stats = donor_data.groupby('donor_id').agg({
-            'donation_amount': ['mean', 'std', 'count', 'sum'],
-            'donation_date': ['min', 'max']
-        })
+        # Group by donor and calculate rolling averages
+        donor_stats = []
 
-        # Flatten column names
-        donor_stats.columns = [
-            f"{col[0]}_{col[1]}" for col in donor_stats.columns
-        ]
-        donor_stats = donor_stats.reset_index()
+        for donor_id in donor_data['donor_id'].unique():
+            donor_history = donor_data[donor_data['donor_id'] == donor_id].sort_values('donation_date')
 
-        # Calculate features
-        features['donor_id'] = donor_stats['donor_id']
-        features['avg_donation'] = donor_stats['donation_amount_mean']
-        features['donation_consistency'] = 1 - (
-            donor_stats['donation_amount_std'] / donor_stats['donation_amount_mean']
-        ).fillna(0).clip(0, 1)
-        features['months_active'] = (
-            (pd.to_datetime(donor_stats['donation_date_max']) -
-             pd.to_datetime(donor_stats['donation_date_min'])).dt.days / 30
-        ).round()
-        features['donation_frequency'] = donor_stats['donation_amount_count'] / \
-            features['months_active'].clip(1)
-        features['total_donated'] = donor_stats['donation_amount_sum']
+            # Calculate 6-month rolling average
+            rolling_avg = donor_history['donation_amount'].rolling(window=6, min_periods=1).mean()
+
+            # Calculate growth rates
+            growth_rate = (donor_history['donation_amount'] - donor_history['donation_amount'].shift(6)) / \
+                          donor_history['donation_amount'].shift(6)
+
+            # Get latest stats
+            latest_stats = {
+                'donor_id': donor_id,
+                'avg_donation': donor_history['donation_amount'].mean(),
+                'recent_avg': rolling_avg.iloc[-6:].mean(),
+                'growth_rate': growth_rate.iloc[-6:].mean(),
+                'donation_std': donor_history['donation_amount'].std(),
+                'months_active': (pd.to_datetime(donor_history['donation_date'].max()) - 
+                                pd.to_datetime(donor_history['donation_date'].min())).days / 30,
+                'total_donations': len(donor_history),
+                'has_increased': (growth_rate.iloc[-6:] > 0).any(),
+                'max_single_increase': growth_rate.max(),
+                'recent_consistency': rolling_avg.iloc[-6:].std() / rolling_avg.iloc[-6:].mean()
+            }
+
+            donor_stats.append(latest_stats)
+
+        features = pd.DataFrame(donor_stats)
+
+        # Fill NaN values
+        features = features.fillna(0)
 
         return features
 
-    def train(self, features, labels):
+    def train(self, features, donor_data):
         """
-        Train the prediction model
+        Train the prediction model using actual historical upgrade patterns
         """
         try:
+            # Create labels based on actual donation increases
+            labels = []
+            for donor_id in features['donor_id']:
+                donor_history = donor_data[donor_data['donor_id'] == donor_id].sort_values('donation_date')
+
+                # Check if donor has increased donations in the past
+                initial_amount = donor_history['donation_amount'].iloc[0]
+                recent_amount = donor_history['donation_amount'].iloc[-1]
+
+                # Label as 1 if there's been a significant increase (>10%)
+                labels.append(1 if (recent_amount > initial_amount * 1.1) else 0)
+
+            labels = np.array(labels)
+
             # Ensure we have both classes represented
             if len(np.unique(labels)) < 2:
-                # If all labels are the same, create a dummy negative class
-                features = pd.concat([features, features.iloc[0:1]])
-                labels = np.append(labels, 1 - labels[0])
+                print("Warning: Not enough variation in donor behavior for meaningful predictions")
+                return {'precision': 0, 'recall': 0, 'roc_auc': 0.5}
 
-            X = self.scaler.fit_transform(features.drop('donor_id', axis=1))
+            # Prepare features for training
+            training_features = features.drop(['donor_id', 'has_increased'], axis=1)
+            X = self.scaler.fit_transform(training_features)
+
+            # Split and train
             X_train, X_test, y_train, y_test = train_test_split(
                 X, labels, test_size=0.2, random_state=42, stratify=labels
             )
@@ -71,7 +97,7 @@ class DonorUpgradePrediction:
             metrics = {
                 'precision': precision_score(y_test, y_pred, zero_division=0),
                 'recall': recall_score(y_test, y_pred, zero_division=0),
-                'roc_auc': roc_auc_score(y_test, y_pred) if len(np.unique(y_test)) > 1 else 0.5
+                'roc_auc': roc_auc_score(y_test, y_pred)
             }
 
             return metrics
@@ -82,10 +108,14 @@ class DonorUpgradePrediction:
 
     def predict(self, features):
         """
-        Make predictions for new donors
+        Make predictions for donors
         """
         try:
-            X = self.scaler.transform(features.drop('donor_id', axis=1))
+            # Prepare features for prediction
+            pred_features = features.drop(['donor_id', 'has_increased'], axis=1)
+            X = self.scaler.transform(pred_features)
+
+            # Get probabilities
             probabilities = self.model.predict_proba(X)
 
             return pd.DataFrame({
@@ -97,5 +127,5 @@ class DonorUpgradePrediction:
             print(f"Error during prediction: {str(e)}")
             return pd.DataFrame({
                 'donor_id': features['donor_id'],
-                'upgrade_probability': 0.5  # Default neutral probability
+                'upgrade_probability': 0.5
             })
