@@ -16,21 +16,23 @@ st.set_page_config(
 st.title("🎯 Donor Analysis & Upgrade Potential Tool")
 st.markdown("""
 This tool helps analyze monthly donors and identify potential candidates for donation upgrades.
-Upload your donor data to get started!
+Using saved donor data.
 """)
 
-# File upload
-uploaded_file = st.file_uploader(
-    "Upload your donor data (CSV)",
-    type="csv",
-    help="CSV should contain columns: donor_id, donation_amount, donation_date"
-)
+# Load data directly
+file_path = "donorId date amount.csv"
+df = None # Initialize df to None
 
-if uploaded_file is not None:
+try:
+    # Try to load and validate data
+    df = load_and_validate_data(file_path)
+except FileNotFoundError:
+    st.error(f"Error: The data file '{file_path}' was not found. Please ensure it is in the root directory of the repository and a valid CSV file.")
+except Exception as e:
+    st.error(f"An error occurred while loading or validating data from {file_path}: {str(e)}")
+
+if df is not None:
     try:
-        # Load and validate data
-        df = load_and_validate_data(uploaded_file)
-
         # Analysis section
         st.header("📊 Donor Analysis Dashboard")
 
@@ -223,7 +225,8 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"Error analyzing data: {str(e)}")
 else:
-    st.info("Please upload a CSV file to begin the analysis.")
+    # This else block is to prevent the rest of the app from running if df is None
+    st.info("Data could not be loaded. Please check the error messages above.")
 
 # Footer
 st.markdown("---")
