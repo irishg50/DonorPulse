@@ -2,3 +2,6 @@
 headless = true
 address = "127.0.0.1"
 port = 5000
+
+[browser]
+gatherUsageStats = false
