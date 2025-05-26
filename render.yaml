@@ -3,7 +3,9 @@ services:
     name: donorpulse
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0
+    startCommand: streamlit run streamlit_app.py --server.port 10000 --server.address 0.0.0.0
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.0 
+        value: 3.9.0
+    healthCheckPath: /
+    autoDeploy: true 
