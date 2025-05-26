@@ -17,7 +17,7 @@ st.title("🎯 Donor Analysis & Upgrade Potential Tool")
 st.markdown("""
 This tool helps analyze monthly donors and identify potential candidates for donation upgrades.
 Using saved donor data.
-"""")
+""")
 
 # Load data directly
 file_path = "donorId date amount.csv"
@@ -167,7 +167,7 @@ if df is not None:
             min_donations = st.number_input(
                 "Minimum Donation Amount ($)",
                 min_value=0,
-                value=50,
+                value=25,
                 help="Filter donors by their current donation amount"
             )
 
