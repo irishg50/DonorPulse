@@ -31,9 +31,6 @@ ENV/
 *.swp
 *.swo
 
-# Streamlit
-.streamlit/
-
 # OS
 .DS_Store
 Thumbs.db 
